@@ -1,4 +1,4 @@
-package com.yanguas.salud;
+package com.sges.saludata;
 
 import com.getcapacitor.BridgeActivity;
 

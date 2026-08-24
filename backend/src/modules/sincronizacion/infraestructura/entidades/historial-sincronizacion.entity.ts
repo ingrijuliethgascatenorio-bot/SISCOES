@@ -5,7 +5,7 @@ export class HistorialSincronizacionEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ name: 'id_usuario', nullable: true })
+  @Column({ name: 'id_usuario', type: 'integer', nullable: true })
   id_usuario!: number;
 
   @Column({ name: 'nombre_usuario', length: 200, nullable: true })
@@ -17,7 +17,7 @@ export class HistorialSincronizacionEntity {
   @Column({ name: 'fecha_fin', type: 'timestamp', nullable: true })
   fecha_fin!: Date;
 
-  @Column({ name: 'duracion_ms', nullable: true })
+  @Column({ name: 'duracion_ms', type: 'integer', nullable: true })
   duracion_ms!: number;
 
   @Column({ name: 'cantidad_registros', default: 0 })
@@ -38,9 +38,12 @@ export class HistorialSincronizacionEntity {
   @Column({ length: 30, default: 'COMPLETADO' })
   estado!: string;
 
-  @Column({ name: 'tipo_archivo_generado', length: 30, nullable: true })
+  @Column({ name: 'tipo_archivo_generado', type: 'varchar', length: 30, nullable: true })
   tipo_archivo_generado!: string;
 
   @Column({ type: 'text', nullable: true })
   observaciones!: string;
+
+  @Column({ name: 'registros_conflictos', default: 0 })
+  registros_conflictos!: number;
 }

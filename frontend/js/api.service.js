@@ -96,6 +96,25 @@ class ApiService {
   }
 
   async procesarRespuesta(response) {
+    if (response.status === 401) {
+      // Token inválido o expirado: cerrar sesión y redirigir al login
+      console.warn('[ApiService] 401 Unauthorized — cerrando sesión.');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      const loginEl = document.getElementById('pantalla-login');
+      const navEnc = document.getElementById('barra-navegacion');
+      const navAdm = document.getElementById('barra-navegacion-admin');
+      if (loginEl) loginEl.style.display = 'flex';
+      if (navEnc) navEnc.style.display = 'none';
+      if (navAdm) navAdm.style.display = 'none';
+      document.querySelectorAll('.vista-pagina').forEach(v => v.classList.remove('activa'));
+      throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+    }
+    if (response.status === 403) {
+      // Autenticado pero sin permisos: NO cerrar sesión
+      console.warn('[ApiService] 403 Forbidden — sin permisos para esta acción.');
+      throw new Error('No tienes permisos para realizar esta acción.');
+    }
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const mensaje = errorData.message || `Error HTTP ${response.status}: ${response.statusText}`;

@@ -1,0 +1,39 @@
+# Compiled output
+/dist
+/db
+/.nest
+
+# Dependency directories
+/node_modules
+
+# IDEs and editors
+/.idea
+/.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Environmental variables
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Test coverage
+/coverage
+
+# Temporary files
+/tmp
+*.zip
+*.rar

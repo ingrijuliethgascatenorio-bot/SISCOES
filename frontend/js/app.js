@@ -9,6 +9,7 @@ import { personasService } from './personas.service.js';
 import { syncService } from './sync.service.js';
 import { historialService } from './historial.service.js';
 import { reportesService } from './reportes.service.js';
+import { adminController } from './admin.js';
 
 // Mapas de catálogos para renderizado visual
 const MAPA_EPS = {
@@ -51,9 +52,25 @@ class AppController {
     // 2. Comprobar sesión
     if (authService.estaAutenticado()) {
       this.ocultarLogin();
-      await this.cargarDashboard();
+      await this.cargarInterfazSegunRol();
     } else {
       this.mostrarLogin();
+    }
+  }
+
+  async cargarInterfazSegunRol() {
+    const rol = authService.obtenerRolActual();
+    const navEncuestador = document.getElementById('barra-navegacion');
+    const navAdmin = document.getElementById('barra-navegacion-admin');
+
+    if (rol === 'ADMIN') {
+      if (navEncuestador) navEncuestador.style.display = 'none';
+      if (navAdmin) navAdmin.style.display = 'flex';
+      await this.irA('admin-inicio');
+    } else {
+      if (navAdmin) navAdmin.style.display = 'none';
+      if (navEncuestador) navEncuestador.style.display = 'flex';
+      await this.irA('inicio');
     }
   }
 
@@ -81,8 +98,7 @@ class AppController {
       const res = await authService.login(usrInput, pwdInput);
       if (res.exito) {
         this.ocultarLogin();
-        await this.cargarDashboard();
-        this.irA('inicio');
+        await this.cargarInterfazSegunRol();
       } else {
         errDiv.textContent = res.mensaje;
         errDiv.style.display = 'block';
@@ -109,7 +125,22 @@ class AppController {
    * Navegación entre Pestañas (Tabs)
    */
   async irA(nombreTab, opciones = {}) {
-    this.tabActual = nombreTab;
+    // Protección y validación de seguridad de roles en el frontend
+    const rol = authService.obtenerRolActual();
+    const esVistaAdmin = nombreTab.startsWith('admin-');
+
+    if (rol === 'ENCUESTADOR' && esVistaAdmin) {
+      console.warn(`[Security Alert] ENCUESTADOR intentando acceder a vista administrativa: ${nombreTab}. Redirigiendo a inicio.`);
+      this.tabActual = 'inicio';
+      nombreTab = 'inicio';
+    } else if (rol === 'ADMIN' && !esVistaAdmin && nombreTab !== 'perfil') {
+      // Redirigir administradores que intenten ir a vistas del encuestador
+      console.warn(`[Security Alert] ADMIN intentando acceder a vista de encuestador: ${nombreTab}. Redirigiendo a admin-inicio.`);
+      this.tabActual = 'admin-inicio';
+      nombreTab = 'admin-inicio';
+    } else {
+      this.tabActual = nombreTab;
+    }
 
     // Cambiar clase activa en botones de la barra inferior
     document.querySelectorAll('.boton-tab').forEach(btn => {
@@ -146,6 +177,16 @@ class AppController {
       await this.cargarReportes();
     } else if (nombreTab === 'perfil') {
       this.cargarPerfil();
+    } else if (nombreTab === 'admin-inicio') {
+      await adminController.cargarAdminDashboard();
+    } else if (nombreTab === 'admin-inconsistencias') {
+      await adminController.cargarAdminInconsistencias();
+    } else if (nombreTab === 'admin-auditoria') {
+      await adminController.cargarAdminAuditoria();
+    } else if (nombreTab === 'admin-reportes') {
+      await adminController.cargarAdminReportes();
+    } else if (nombreTab === 'admin-perfil') {
+      adminController.cargarAdminPerfil();
     }
   }
 
@@ -214,13 +255,16 @@ class AppController {
       const epsText = Number(p.id_eps) === 99 ? (p.eps_otro_nombre || 'Otra EPS') : (MAPA_EPS[p.id_eps] || 'EPS');
 
       let claseBadge = 'pendiente';
-      let textBadge = 'Pendiente';
+      let textBadge = 'Pendiente de sincronización';
       if (p.estado_sincronizacion === 'SYNCED') {
         claseBadge = 'sincronizado';
         textBadge = 'Sincronizado';
       } else if (p.estado_sincronizacion === 'ERROR') {
         claseBadge = 'error';
-        textBadge = 'Error';
+        textBadge = 'Error de sincronización';
+      } else if (['INCONSISTENCIA', 'CONFLICTO', 'CONFLICT'].includes(p.estado_sincronizacion)) {
+        claseBadge = 'pendiente';
+        textBadge = 'Inconsistencia';
       }
 
       if (p.estado_registro === 'INACTIVO') {
@@ -385,6 +429,19 @@ class AppController {
     }
 
     pendientes.forEach(p => {
+      let claseBadge = 'pendiente';
+      let textBadge = 'Pendiente de sincronización';
+      if (p.estado_sincronizacion === 'ERROR') {
+        claseBadge = 'error';
+        textBadge = 'Error de sincronización';
+      } else if (['INCONSISTENCIA', 'CONFLICTO', 'CONFLICT'].includes(p.estado_sincronizacion)) {
+        claseBadge = 'pendiente';
+        textBadge = 'Inconsistencia';
+      } else if (p.estado_sincronizacion === 'SYNCED') {
+        claseBadge = 'sincronizado';
+        textBadge = 'Sincronizado';
+      }
+
       const div = document.createElement('div');
       div.className = 'tarjeta-persona';
       div.innerHTML = `
@@ -392,7 +449,7 @@ class AppController {
           <div class="persona-nombre">${p.nombres} ${p.apellidos}</div>
           <div class="persona-sub">Doc: ${p.numero_documento}</div>
         </div>
-        <span class="insignia pendiente">${p.estado_sincronizacion}</span>
+        <span class="insignia ${claseBadge}">${textBadge}</span>
       `;
       contenedor.appendChild(div);
     });
@@ -410,7 +467,7 @@ class AppController {
   }
 
   /**
-   * Carga la vista de Historial
+   * Carga la vista de Historial (Agrupando de forma visual intentos fallidos consecutivos)
    */
   async cargarHistorial() {
     const logs = await historialService.obtenerHistorial();
@@ -426,18 +483,44 @@ class AppController {
       return;
     }
 
+    // Algoritmo de agrupación visual para intentos de error consecutivos en el historial
+    const agrupados = [];
+    let actualGroup = null;
+
     logs.forEach(log => {
+      if (log.estado === 'ERROR') {
+        if (actualGroup && actualGroup.estado === 'ERROR') {
+          actualGroup.intentos = (actualGroup.intentos || 1) + 1;
+          // Conservar el mensaje del último intento
+          actualGroup.mensaje = log.mensaje;
+          actualGroup.cantidad_registros += log.cantidad_registros;
+        } else {
+          actualGroup = { ...log, intentos: 1 };
+          agrupados.push(actualGroup);
+        }
+      } else {
+        actualGroup = { ...log, intentos: 1 };
+        agrupados.push(actualGroup);
+      }
+    });
+
+    agrupados.forEach(log => {
       const fecha = new Date(log.fecha_fin).toLocaleString('es-CO');
       const div = document.createElement('div');
       div.className = 'tarjeta-blanca';
       div.style.marginBottom = '10px';
+      
+      const badgeText = log.estado === 'ERROR' && log.intentos > 1 
+        ? `ERROR · ${log.intentos} INTENTOS` 
+        : log.estado;
+
       div.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <strong style="font-size: 0.95rem;">${fecha}</strong>
-          <span class="insignia ${log.estado === 'ÉXITO' ? 'sincronizado' : 'error'}">${log.estado}</span>
+          <span class="insignia ${log.estado === 'ÉXITO' ? 'sincronizado' : 'error'}">${badgeText}</span>
         </div>
         <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-top: 6px;">
-          ${log.mensaje} (${log.cantidad_registros} registros)
+          ${log.mensaje} (${log.cantidad_registros} registros procesados)
         </p>
       `;
       contenedor.appendChild(div);
@@ -448,35 +531,253 @@ class AppController {
    * Carga la vista de Reportes
    */
   async cargarReportes() {
-    const rep = await reportesService.obtenerReporteGeneral();
-    const contenedor = document.getElementById('reporte-distribucion');
-    contenedor.innerHTML = `
-      <div style="padding: 10px 0;">
-        <div style="display:flex; justify-content: space-between; margin-bottom: 8px;">
-          <span>Total personas registradas en SQLite:</span>
-          <strong>${rep.total}</strong>
-        </div>
-        <div style="display:flex; justify-content: space-between; margin-bottom: 8px;">
-          <span>Registros Activos:</span>
-          <strong style="color: var(--color-success);">${rep.activos}</strong>
-        </div>
-        <div style="display:flex; justify-content: space-between;">
-          <span>Registros Inactivos:</span>
-          <strong style="color: var(--color-danger);">${rep.inactivos}</strong>
-        </div>
-      </div>
-    `;
+    // Inicializar el controlador de reportes de sincronización del encuestador
+    await appReportes.cargarReportes();
   }
 
   /**
    * Carga la vista de Perfil
    */
   cargarPerfil() {
+    const payload = authService.obtenerPayload();
     const usr = authService.obtenerUsuarioActual();
-    document.getElementById('perfil-nombre').textContent = usr;
-    document.getElementById('perfil-avatar').textContent = usr.slice(0, 2).toUpperCase();
+    const nombreCompleto = authService.obtenerNombreCompleto();
+    const rol = authService.obtenerRolActual();
+
+    document.getElementById('perfil-nombre').textContent = nombreCompleto;
+    document.getElementById('perfil-avatar').textContent = nombreCompleto.slice(0, 2).toUpperCase();
+
+    // Actualizar elementos adicionales si existen en el index.html para dar visibilidad
+    const subtituloPerfil = document.querySelector('#vista-perfil .tarjeta-blanca p');
+    if (subtituloPerfil) {
+      subtituloPerfil.innerHTML = `
+        <strong>Usuario:</strong> ${usr}<br/>
+        <strong>Rol asignado:</strong> <span class="insignia sincronizado" style="font-size: 0.75rem; margin-top: 4px; display: inline-block;">${rol}</span>
+      `;
+    }
+
+    // Inicializar selects de tema en perfil
+    const temaActual = localStorage.getItem('theme_preference') || 'light';
+    const select = document.getElementById('perfil-select-tema');
+    if (select) select.value = temaActual;
   }
 }
+
+class TemaController {
+  constructor() {
+    this.temaActual = localStorage.getItem('theme_preference') || 'light';
+    this.aplicarTema(this.temaActual);
+  }
+
+  cambiarTema(tema) {
+    this.temaActual = tema;
+    localStorage.setItem('theme_preference', tema);
+    this.aplicarTema(tema);
+  }
+
+  aplicarTema(tema) {
+    if (tema === 'dark') {
+      document.body.classList.add('theme-dark');
+    } else {
+      document.body.classList.remove('theme-dark');
+    }
+    // Sincronizar selectores si existen en el DOM
+    const adminSelect = document.getElementById('admin-select-tema');
+    const userSelect = document.getElementById('perfil-select-tema');
+    if (adminSelect) adminSelect.value = tema;
+    if (userSelect) userSelect.value = tema;
+  }
+}
+
+class EncuestadorReportesController {
+  constructor() {
+    this.paginaReportes = 1;
+    this.filtroFecha = '';
+    this.terminoBusqueda = '';
+  }
+
+  async cargarReportes() {
+    const contenedor = document.getElementById('lista-reportes-sincronizaciones');
+    if (!contenedor) return;
+
+    contenedor.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--color-text-muted);">Cargando tus reportes...</div>';
+
+    try {
+      const response = await reportesService.listarSincronizaciones(this.paginaReportes, 10);
+      contenedor.innerHTML = '';
+
+      let lista = response.datos || [];
+
+      // Aplicar filtros locales de búsqueda
+      if (this.terminoBusqueda) {
+        lista = lista.filter(item => 
+          String(item.id).includes(this.terminoBusqueda) || 
+          (item.nombre_usuario || '').toLowerCase().includes(this.terminoBusqueda.toLowerCase())
+        );
+      }
+
+      if (this.filtroFecha) {
+        lista = lista.filter(item => {
+          const itemFecha = new Date(item.fecha_inicio).toISOString().split('T')[0];
+          return itemFecha === this.filtroFecha;
+        });
+      }
+
+      if (lista.length === 0) {
+        contenedor.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--color-text-muted);">No se encontraron sincronizaciones.</div>';
+        renderizarPaginador(0, 10, 1, 'paginacion-reportes-sync', () => {});
+        return;
+      }
+
+      lista.forEach(s => {
+        const tarjeta = document.createElement('div');
+        tarjeta.className = 'tarjeta-blanca';
+        tarjeta.style.marginBottom = '12px';
+        tarjeta.style.padding = '14px';
+        tarjeta.style.cursor = 'pointer';
+        tarjeta.onclick = () => this.abrirDetalle(s.id);
+
+        const fechaStr = new Date(s.fecha_inicio).toLocaleString('es-CO');
+        const estadoClass = s.estado === 'COMPLETADO' ? 'sincronizado' : 'error';
+
+        tarjeta.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 6px; margin-bottom: 8px;">
+            <strong style="color: var(--color-primary);">Sincronización #${s.id}</strong>
+            <span class="insignia ${estadoClass}">${s.estado}</span>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+            <div><strong>Fecha:</strong> ${fechaStr}</div>
+            <div style="margin-top: 4px; font-weight: 600; color: var(--color-text);">
+              Nuevos: ${s.registros_nuevos} · Actualizados: ${s.registros_actualizados} · Errores: ${s.registros_error}
+            </div>
+          </div>
+        `;
+        contenedor.appendChild(tarjeta);
+      });
+
+      renderizarPaginador(response.total || 0, 10, this.paginaReportes, 'paginacion-reportes-sync', (nuevaPag) => {
+        this.paginaReportes = nuevaPag;
+        this.cargarReportes();
+      });
+
+    } catch (e) {
+      console.error('Error al listar reportes en encuestador:', e);
+      contenedor.innerHTML = '<div style="text-align: center; padding: 12px; color: var(--color-danger);">Error de conexión.</div>';
+    }
+  }
+
+  onBuscarInput(event) {
+    this.terminoBusqueda = event.target.value.trim();
+    this.paginaReportes = 1;
+    this.cargarReportes();
+  }
+
+  onCambiarFecha(event) {
+    this.filtroFecha = event.target.value;
+    this.paginaReportes = 1;
+    this.cargarReportes();
+  }
+
+  limpiarFiltros() {
+    document.getElementById('reportes-input-busqueda').value = '';
+    document.getElementById('reportes-filtro-fecha').value = '';
+    this.terminoBusqueda = '';
+    this.filtroFecha = '';
+    this.paginaReportes = 1;
+    this.cargarReportes();
+  }
+
+  async abrirDetalle(id) {
+    const listSec = document.getElementById('reporte-general-seccion');
+    const detSec = document.getElementById('reporte-detalle-seccion');
+    const detCont = document.getElementById('reporte-detalle-contenido');
+
+    listSec.style.display = 'none';
+    detSec.style.display = 'block';
+    detCont.innerHTML = '<div style="text-align: center; padding: 12px;">Cargando detalles de sincronización...</div>';
+
+    try {
+      const data = await reportesService.obtenerDetalleSincronizacion(id);
+      const s = data.sincronizacion;
+      const cambios = data.cambios || [];
+
+      let cambiosHtml = '';
+      if (cambios.length === 0) {
+        cambiosHtml = '<p style="font-size: 0.9rem; color: var(--color-text-muted); font-style: italic;">Sin cambios registrados en esta sincronización.</p>';
+      } else {
+        cambios.forEach(c => {
+          cambiosHtml += `
+            <div class="tarjeta-persona" style="flex-direction: column; align-items: stretch; gap: 4px; padding: 10px; margin-bottom: 8px;">
+              <div style="font-weight: 700; font-size: 0.9rem;">Documento: ${c.numero_documento}</div>
+              <div style="font-size: 0.85rem; color: var(--color-text-muted);">
+                Campo: <strong>${c.campo_modificado}</strong>
+              </div>
+              <div style="font-size: 0.85rem; color: var(--color-danger);">Antes: ${c.valor_anterior || '(vacío)'}</div>
+              <div style="font-size: 0.85rem; color: var(--color-success);">Después: ${c.valor_nuevo || '(vacío)'}</div>
+            </div>
+          `;
+        });
+      }
+
+      detCont.innerHTML = `
+        <div class="tarjeta-blanca" style="padding: 16px; margin-bottom: 16px;">
+          <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--color-primary); margin-bottom: 12px; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">Sincronización #${s.id}</h2>
+          <div style="font-size: 0.9rem; line-height: 1.5; color: var(--color-text-muted);">
+            <div><strong>Fecha de inicio:</strong> ${new Date(s.fecha_inicio).toLocaleString('es-CO')}</div>
+            <div><strong>Fecha de fin:</strong> ${s.fecha_fin ? new Date(s.fecha_fin).toLocaleString('es-CO') : 'N/A'}</div>
+            <div><strong>Duración:</strong> ${s.duracion_ms ? (s.duracion_ms / 1000).toFixed(2) + 's' : 'N/A'}</div>
+            <div><strong>Total registros procesados:</strong> ${s.cantidad_registros}</div>
+            <div style="margin-top: 8px; font-weight: 700; color: var(--color-text);">
+              Nuevos: ${s.registros_nuevos} · Actualizados: ${s.registros_actualizados} · Errores: ${s.registros_error}
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 16px;">
+            <button class="boton-principal" style="flex: 1;" onclick="appReportes.descargarReporte(${s.id}, 'pdf')">
+              <ion-icon name="download"></ion-icon> Descargar PDF
+            </button>
+            <button class="boton-secundario" style="flex: 1;" onclick="appReportes.descargarReporte(${s.id}, 'txt')">
+              <ion-icon name="document-text"></ion-icon> Descargar TXT
+            </button>
+          </div>
+        </div>
+        <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 10px;">Detalle de Cambios</h3>
+        <div style="max-height: 300px; overflow-y: auto;">
+          ${cambiosHtml}
+        </div>
+      `;
+    } catch (e) {
+      console.error('Error al cargar detalle:', e);
+      detCont.innerHTML = '<div style="text-align: center; color: var(--color-danger);">Error al cargar detalle.</div>';
+    }
+  }
+
+  mostrarListaSincronizaciones() {
+    document.getElementById('reporte-general-seccion').style.display = 'block';
+    document.getElementById('reporte-detalle-seccion').style.display = 'none';
+  }
+
+  async descargarReporte(id, formato) {
+    try {
+      const blob = await reportesService.descargarReporteBlob(id, formato);
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `reporte_sync_${id}.${formato}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+
+      alert(`${formato.toUpperCase()} descargado.`);
+    } catch (e) {
+      alert(`Error al descargar el archivo: ${e.message}`);
+    }
+  }
+}
+
+export const appTema = new TemaController();
+export const appReportes = new EncuestadorReportesController();
 
 // Instancia global
 const app = new AppController();
@@ -503,6 +804,41 @@ window.appPersonas = {
 
 window.appSync = {
   ejecutarSincronizacionManual: () => app.ejecutarSincronizacionManual()
+};
+
+window.appAdmin = {
+  cambiarFiltroConf: (est, btn) => adminController.cambiarFiltroConf(est, btn),
+  abrirModalConflicto: (id) => adminController.abrirModalConflicto(id),
+  cerrarModalConflicto: () => adminController.cerrarModalConflicto(),
+  onCambioDecisionResolucion: (el) => adminController.onCambioDecisionResolucion(el),
+  guardarResolucion: (e) => adminController.guardarResolucion(e),
+  onBuscarInconsistencia: (e) => adminController.onBuscarInconsistencia(e),
+  onBuscarAuditoria: (e) => adminController.onBuscarAuditoria(e),
+  onCambiarFechaAuditoria: (e) => adminController.onCambiarFechaAuditoria(e),
+  filtrarHoyAuditoria: () => adminController.filtrarHoyAuditoria(),
+  limpiarFiltrosAuditoria: () => adminController.limpiarFiltrosAuditoria()
+};
+
+window.appTema = {
+  cambiarTema: (tema) => appTema.cambiarTema(tema)
+};
+
+import { adminReportesController } from './admin.js';
+
+window.appAdminReportes = {
+  onBuscarInput: (e) => adminReportesController.onBuscarInput(e),
+  onCambiarFecha: (e) => adminReportesController.onCambiarFecha(e),
+  limpiarFiltros: () => adminReportesController.limpiarFiltros(),
+  descargarReporte: (id, f) => adminReportesController.descargarReporte(id, f),
+  mostrarListaSincronizaciones: () => adminReportesController.mostrarListaSincronizaciones()
+};
+
+window.appReportes = {
+  onBuscarInput: (e) => appReportes.onBuscarInput(e),
+  onCambiarFecha: (e) => appReportes.onCambiarFecha(e),
+  limpiarFiltros: () => appReportes.limpiarFiltros(),
+  descargarReporte: (id, f) => appReportes.descargarReporte(id, f),
+  mostrarListaSincronizaciones: () => appReportes.mostrarListaSincronizaciones()
 };
 
 // Auto-iniciar cuando la página (y el puente nativo de Capacitor) esté completamente lista.

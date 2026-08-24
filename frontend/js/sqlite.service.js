@@ -96,6 +96,8 @@ class SqliteService {
         estado_sincronizacion TEXT DEFAULT 'PENDING_INSERT',
         fecha_creacion TEXT NOT NULL,
         fecha_actualizacion TEXT NOT NULL,
+        version_persona INTEGER DEFAULT 1,
+        version_base INTEGER DEFAULT 1,
         version_local INTEGER DEFAULT 1
       );
 
@@ -131,6 +133,8 @@ class SqliteService {
         { nombre: 'correo', ddl: 'ALTER TABLE Persona ADD COLUMN correo TEXT;' },
         { nombre: 'estrato', ddl: 'ALTER TABLE Persona ADD COLUMN estrato TEXT;' },
         { nombre: 'estado_civil', ddl: 'ALTER TABLE Persona ADD COLUMN estado_civil TEXT;' },
+        { nombre: 'version_persona', ddl: 'ALTER TABLE Persona ADD COLUMN version_persona INTEGER DEFAULT 1;' },
+        { nombre: 'version_base', ddl: 'ALTER TABLE Persona ADD COLUMN version_base INTEGER DEFAULT 1;' },
       ];
 
       for (const col of columnasNuevas) {

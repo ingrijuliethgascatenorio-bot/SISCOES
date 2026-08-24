@@ -3,21 +3,31 @@
    ========================================================================== */
 :root {
   /* Paleta de colores institucional y premium */
-  --color-primary: #0f766e;        /* Verde Salud Primario */
-  --color-primary-light: #14b8a6;  /* Verde Turquesa Secundario */
+  --color-primary: #0f766e;
+  /* Verde Salud Primario */
+  --color-primary-light: #14b8a6;
+  /* Verde Turquesa Secundario */
   --color-primary-rgba: rgba(15, 118, 110, 0.08);
-  --color-accent: #0284c7;         /* Azul de apoyo */
-  --color-accent-bg: #e0f2fe;      /* Fondo azul suave */
+  --color-accent: #0284c7;
+  /* Azul de apoyo */
+  --color-accent-bg: #e0f2fe;
+  /* Fondo azul suave */
 
   /* Colores de fondo y superficies */
-  --color-bg: #f8fafc;             /* Slate 50 - Fondo nativo moderno */
-  --color-surface: #ffffff;        /* Superficie de tarjeta blanca */
-  --color-surface-variant: #f1f5f9;/* Slate 100 - Fondo alterno */
-  --color-border: #e2e8f0;         /* Slate 200 - Borde limpio */
+  --color-bg: #f8fafc;
+  /* Slate 50 - Fondo nativo moderno */
+  --color-surface: #ffffff;
+  /* Superficie de tarjeta blanca */
+  --color-surface-variant: #f1f5f9;
+  /* Slate 100 - Fondo alterno */
+  --color-border: #e2e8f0;
+  /* Slate 200 - Borde limpio */
 
   /* Colores de texto y contraste (WCAG AA) */
-  --color-text: #0f172a;           /* Slate 900 - Contraste extremadamente alto */
-  --color-text-muted: #64748b;     /* Slate 500 - Texto secundario legible */
+  --color-text: #0f172a;
+  /* Slate 900 - Contraste extremadamente alto */
+  --color-text-muted: #64748b;
+  /* Slate 500 - Texto secundario legible */
 
   /* Estados semánticos unificados */
   --color-success: #10b981;
@@ -30,10 +40,14 @@
   --color-info-bg: #e0e7ff;
 
   /* Bordes y Radios unificados (Design System) */
-  --radius-lg: 16px;               /* Tarjetas, modales */
-  --radius-md: 12px;               /* Botones, inputs */
-  --radius-sm: 8px;                /* Elementos menores */
-  --radius-pill: 999px;            /* Badges, indicadores, buscador */
+  --radius-lg: 16px;
+  /* Tarjetas, modales */
+  --radius-md: 12px;
+  /* Botones, inputs */
+  --radius-sm: 8px;
+  /* Elementos menores */
+  --radius-pill: 999px;
+  /* Badges, indicadores, buscador */
 
   /* Sombras suaves MD3 (Elevación) */
   --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -46,6 +60,43 @@
   --tab-bar-height: 72px;
 }
 
+/* Reglas de variables para Tema Oscuro */
+body.theme-dark {
+  --color-bg: #0f172a; /* Slate 900 */
+  --color-surface: #1e293b; /* Slate 800 */
+  --color-surface-variant: #334155; /* Slate 700 */
+  --color-border: #334155; /* Slate 700 */
+  --color-text: #f8fafc; /* Slate 50 */
+  --color-text-muted: #94a3b8; /* Slate 400 */
+  --color-primary-rgba: rgba(20, 184, 166, 0.15);
+  --color-accent-bg: #0c4a6e; /* Azul oscuro suave */
+}
+
+body.theme-dark .barra-navegacion {
+  background: rgba(30, 41, 59, 0.94);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .tarjeta-blanca,
+body.theme-dark .tarjeta-persona,
+body.theme-dark .tarjeta-metrica {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+body.theme-dark input,
+body.theme-dark select,
+body.theme-dark textarea {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+body.theme-dark .modal-contenido {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
 /* Base y Reset */
 * {
   box-sizing: border-box;
@@ -56,7 +107,8 @@
   -webkit-font-smoothing: antialiased;
 }
 
-html, body {
+html,
+body {
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -102,8 +154,15 @@ html, body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ==========================================================================
@@ -237,9 +296,20 @@ html, body {
 }
 
 @keyframes pulseState {
-  0% { transform: scale(0.95); opacity: 0.5; }
-  50% { transform: scale(1.5); opacity: 0; }
-  100% { transform: scale(0.95); opacity: 0.5; }
+  0% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
 }
 
 /* Modificadores de color dinámicos del Banner */
@@ -248,6 +318,7 @@ html, body {
   background-color: #ecfdf5;
   color: #065f46;
 }
+
 .banner-estado.success .punto-estado {
   background-color: var(--color-success);
   color: var(--color-success);
@@ -258,6 +329,7 @@ html, body {
   background-color: #fffbeb;
   color: #92400e;
 }
+
 .banner-estado.alerta .punto-estado {
   background-color: var(--color-warning);
   color: var(--color-warning);
@@ -317,10 +389,25 @@ html, body {
   transition: transform 200ms ease;
 }
 
-.icono-circulo.verde { background: #e6f7f4; color: var(--color-primary); }
-.icono-circulo.naranja { background: var(--color-warning-bg); color: var(--color-warning); }
-.icono-circulo.rojo { background: var(--color-danger-bg); color: var(--color-danger); }
-.icono-circulo.morado { background: var(--color-info-bg); color: var(--color-info); }
+.icono-circulo.verde {
+  background: #e6f7f4;
+  color: var(--color-primary);
+}
+
+.icono-circulo.naranja {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.icono-circulo.rojo {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.icono-circulo.morado {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
 
 .valor-metrica {
   font-size: 1.8rem;
@@ -581,10 +668,25 @@ html, body {
   white-space: nowrap;
 }
 
-.insignia.sincronizado { background: var(--color-success-bg); color: #065f46; }
-.insignia.pendiente { background: var(--color-warning-bg); color: #92400e; }
-.insignia.error { background: var(--color-danger-bg); color: #991b1b; }
-.insignia.inactivo { background: var(--color-surface-variant); color: var(--color-text-muted); }
+.insignia.sincronizado {
+  background: var(--color-success-bg);
+  color: #065f46;
+}
+
+.insignia.pendiente {
+  background: var(--color-warning-bg);
+  color: #92400e;
+}
+
+.insignia.error {
+  background: var(--color-danger-bg);
+  color: #991b1b;
+}
+
+.insignia.inactivo {
+  background: var(--color-surface-variant);
+  color: var(--color-text-muted);
+}
 
 /* ==========================================================================
    MODALES Y CONTENEDORES FLOTANTES (POP-UPS)
@@ -623,8 +725,13 @@ html, body {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
@@ -708,9 +815,17 @@ html, body {
 }
 
 @keyframes pulseLogo {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .login-titulo {
@@ -738,8 +853,13 @@ html, body {
 }
 
 @keyframes skeletonLoading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .skeleton-text {

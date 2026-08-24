@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.yanguas.salud',
-  appName: 'frontend',
+  appId: 'com.sges.saludata',
+  appName: 'SaluData',
   webDir: 'dist',
   server: {
     // Por defecto Capacitor sirve la app como si fuera "https://localhost",

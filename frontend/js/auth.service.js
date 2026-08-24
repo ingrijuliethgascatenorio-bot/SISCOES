@@ -48,7 +48,36 @@ class AuthService {
    * Obtiene el nombre del usuario logueado
    */
   obtenerUsuarioActual() {
-    return localStorage.getItem(this.userKey) || 'encuestador1';
+    return localStorage.getItem(this.userKey) || 'Usuario';
+  }
+
+  obtenerPayload() {
+    const token = localStorage.getItem(this.tokenKey);
+    if (!token) return null;
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error('Error al decodificar token:', e);
+      return null;
+    }
+  }
+
+  obtenerRolActual() {
+    const payload = this.obtenerPayload();
+    return payload?.rol || 'ENCUESTADOR';
+  }
+
+  obtenerNombreCompleto() {
+    const payload = this.obtenerPayload();
+    if (payload?.nombre || payload?.apellido) {
+      return `${payload.nombre || ''} ${payload.apellido || ''}`.trim();
+    }
+    return localStorage.getItem(this.userKey) || 'Administrador';
   }
 }
 

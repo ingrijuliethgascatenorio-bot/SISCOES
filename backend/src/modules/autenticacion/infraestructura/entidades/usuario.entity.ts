@@ -22,4 +22,7 @@ export class UsuarioEntity {
 
   @Column({ default: 'Activo' })
   estado: string;
+
+  @Column({ type: 'varchar', length: 30, default: 'ENCUESTADOR', nullable: true })
+  rol!: string;
 }

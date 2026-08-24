@@ -8,7 +8,7 @@ export class HistorialCambiosEntity {
   @Column({ name: 'numero_documento', length: 50 })
   numero_documento!: string;
 
-  @Column({ name: 'id_usuario', nullable: true })
+  @Column({ name: 'id_usuario', type: 'integer', nullable: true })
   id_usuario!: number;
 
   @Column({ name: 'campo_modificado', length: 100 })
@@ -23,6 +23,6 @@ export class HistorialCambiosEntity {
   @CreateDateColumn({ name: 'fecha' })
   fecha!: Date;
 
-  @Column({ name: 'id_sincronizacion', nullable: true })
-  id_sincronizacion!: number;
+  @Column({ name: 'id_sincronizacion', type: 'integer', nullable: true })
+  id_sincronizacion?: number | null;
 }

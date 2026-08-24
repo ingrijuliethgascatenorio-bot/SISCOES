@@ -92,6 +92,10 @@ export class PersonaSyncDto {
   @IsOptional()
   @IsDateString()
   fecha_actualizacion?: string;
+
+  @IsOptional()
+  @IsInt()
+  version_base?: number;
 }
 
 export class SyncRequestDto {
@@ -107,6 +111,7 @@ export interface SyncResultadoItem {
   accion: 'INSERT' | 'UPDATE' | 'ERROR' | 'SIN_CAMBIOS';
   campos_modificados?: string[];
   error?: string;
+  version_persona?: number;
 }
 
 export interface SyncResponseDto {

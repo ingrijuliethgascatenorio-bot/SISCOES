@@ -5,7 +5,7 @@ export class PersonaEntity {
   @PrimaryColumn({ name: 'numero_documento', type: 'varchar', length: 50 })
   numero_documento!: string;
 
-  @Column({ name: 'id_tipo_documento', nullable: true })
+  @Column({ name: 'id_tipo_documento', type: 'integer', nullable: true })
   id_tipo_documento!: number;
 
   @Column({ length: 200 })
@@ -17,37 +17,37 @@ export class PersonaEntity {
   @Column({ name: 'fecha_nacimiento', type: 'date', nullable: true })
   fecha_nacimiento!: Date;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   genero!: string;
 
-  @Column({ name: 'id_eps', nullable: true })
+  @Column({ name: 'id_eps', type: 'integer', nullable: true })
   id_eps!: number;
 
-  @Column({ name: 'eps_otro_nombre', length: 200, nullable: true })
+  @Column({ name: 'eps_otro_nombre', type: 'varchar', length: 200, nullable: true })
   eps_otro_nombre!: string;
 
-  @Column({ length: 300, nullable: true })
+  @Column({ type: 'varchar', length: 300, nullable: true })
   direccion!: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   barrio!: string;
 
-  @Column({ length: 5, nullable: true })
+  @Column({ type: 'varchar', length: 5, nullable: true })
   estrato!: string;
 
-  @Column({ length: 200, nullable: true })
+  @Column({ type: 'varchar', length: 200, nullable: true })
   correo!: string;
 
-  @Column({ name: 'estado_civil', length: 30, nullable: true })
+  @Column({ name: 'estado_civil', type: 'varchar', length: 30, nullable: true })
   estado_civil!: string;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   telefono1!: string;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   telefono2!: string;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   telefono3!: string;
 
   @Column({ length: 30, default: 'Activo' })
@@ -65,4 +65,10 @@ export class PersonaEntity {
 
   @CreateDateColumn({ name: 'fecha_creacion' })
   fecha_creacion!: Date;
+
+  @Column({ name: 'ultimo_editor_id', type: 'integer', nullable: true })
+  ultimo_editor_id?: number | null;
+
+  @Column({ name: 'version_persona', type: 'integer', default: 1 })
+  version_persona!: number;
 }

@@ -6,7 +6,7 @@
 
 export const CONFIG = {
   // IP de la PC en la red local Wi-Fi escuchando en el puerto 3001
-  API_URL: "http://192.168.1.7:3001/api",
+  API_URL: "https://saludata-api.julieth.site/api",
   APP_NAME: "SGES Salud",
   DB_NAME: "salud_encuestas"
 };

@@ -42,7 +42,9 @@ class SyncService {
       telefono3: p.telefono3 || undefined,
       estado: p.estado_registro === 'INACTIVO' ? 'Inactivo' : 'Activo',
       estado_sincronizacion: p.estado_sincronizacion,
-      fecha_actualizacion: p.fecha_actualizacion
+      fecha_actualizacion: p.fecha_actualizacion,
+      version_base: p.version_base !== undefined && p.version_base !== null ? Number(p.version_base) : 1,
+      version_persona: p.version_persona !== undefined && p.version_persona !== null ? Number(p.version_persona) : 1
     };
   }
 
@@ -65,17 +67,34 @@ class SyncService {
       const ahora = new Date().toISOString();
       const detalles = respuesta?.detalles || [];
 
-      // El backend responde con un detalle por registro (accion: INSERT/UPDATE/ERROR/SIN_CAMBIOS).
+      // El backend responde con un detalle por registro (accion: INSERT/UPDATE/ERROR/SIN_CAMBIOS/CONFLICTO).
       // Actualizamos cada registro local según lo que el backend realmente confirmó,
       // en vez de asumir que todo salió bien.
       for (const p of pendientes) {
         const detalle = detalles.find(d => d.numero_documento === p.numero_documento);
-        const nuevoEstado = (detalle && detalle.accion === 'ERROR') ? 'ERROR' : 'SYNCED';
+        let nuevoEstado = 'SYNCED';
+        let queryParams = [nuevoEstado, ahora, p.id];
+        let querySql = 'UPDATE Persona SET estado_sincronizacion = ?, fecha_actualizacion = ? WHERE id = ?';
 
-        await sqliteService.run(
-          'UPDATE Persona SET estado_sincronizacion = ?, fecha_actualizacion = ? WHERE id = ?',
-          [nuevoEstado, ahora, p.id]
-        );
+        if (detalle) {
+          if (['CONFLICT', 'CONFLICTO', 'INCONSISTENCIA'].includes(detalle.accion)) {
+            nuevoEstado = 'INCONSISTENCIA';
+            queryParams = [nuevoEstado, ahora, p.id];
+            querySql = 'UPDATE Persona SET estado_sincronizacion = ?, fecha_actualizacion = ? WHERE id = ?';
+          } else if (detalle.accion === 'ERROR') {
+            nuevoEstado = 'ERROR';
+            queryParams = [nuevoEstado, ahora, p.id];
+            querySql = 'UPDATE Persona SET estado_sincronizacion = ?, fecha_actualizacion = ? WHERE id = ?';
+          } else {
+            // Éxito: INSERT / UPDATE / SIN_CAMBIOS
+            nuevoEstado = 'SYNCED';
+            const serverVersion = Number(detalle.version_persona || detalle.nueva_version || p.version_persona || 1);
+            queryParams = [nuevoEstado, ahora, serverVersion, serverVersion, p.id];
+            querySql = 'UPDATE Persona SET estado_sincronizacion = ?, fecha_actualizacion = ?, version_persona = ?, version_base = ? WHERE id = ?';
+          }
+        }
+
+        await sqliteService.run(querySql, queryParams);
       }
 
       const fechaFin = new Date().toISOString();
